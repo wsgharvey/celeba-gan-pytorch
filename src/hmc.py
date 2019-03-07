@@ -5,8 +5,9 @@ from pyro.infer.mcmc import MCMC, NUTS
 
 from model import FaceModel
 
+CUDA_AVAILABLE = torch.cuda.is_available()
 
-model = FaceModel()
+model = FaceModel(cuda=CUDA_AVAILABLE)
 
 nuts_kernel = NUTS(model, adapt_step_size=True)
 
@@ -72,7 +73,7 @@ obs_patch = torch.tensor([[[ 0.9183,  0.9098,  0.9013,  0.9000,  0.8941,  0.9200
                            [-0.8005, -0.6583, -0.7008, -0.7350, -0.7162, -0.7748, -0.8457,
                             -0.8570, -0.9209, -0.9446],
                            [-0.7792, -0.6815, -0.7247, -0.7436, -0.7619, -0.8765, -0.8695,
-                            -0.8998, -0.9481, -0.9146]]])
+                            -0.8998, -0.9481, -0.9146]]]).cuda()
 
-hmc_posterior = MCMC(nuts_kernel, num_samples=1000, warmup_steps=200) \
+hmc_posterior = MCMC(nuts_kernel, num_samples=100, warmup_steps=20) \
     .run(obs_coords, obs_patch)
