@@ -1,3 +1,5 @@
+*.png
+
 data/
 src/__pycache__/
 report/*.aux

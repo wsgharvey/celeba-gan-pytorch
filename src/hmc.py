@@ -3,9 +3,13 @@ import torch
 import pyro
 from pyro.infer.mcmc import MCMC, NUTS
 
+import numpy as np
+from PIL import Image
+
 from model import FaceModel
 
 CUDA_AVAILABLE = torch.cuda.is_available()
+print("CUDA: ", CUDA_AVAILABLE)
 
 model = FaceModel(cuda=CUDA_AVAILABLE)
 
@@ -75,5 +79,13 @@ obs_patch = torch.tensor([[[ 0.9183,  0.9098,  0.9013,  0.9000,  0.8941,  0.9200
                            [-0.7792, -0.6815, -0.7247, -0.7436, -0.7619, -0.8765, -0.8695,
                             -0.8998, -0.9481, -0.9146]]]).cuda()
 
-hmc_posterior = MCMC(nuts_kernel, num_samples=100, warmup_steps=20) \
+hmc_posterior = MCMC(nuts_kernel, num_samples=10, warmup_steps=0) \
     .run(obs_coords, obs_patch)
+
+for i, trace in enumerate(hmc_posterior.exec_traces):
+    sampled_img = trace.nodes['_RETURN']['value']
+    x0, y0 = obs_coords
+    sampled_img[:, y0:y0+10, x0:x0+10] = obs_patch
+    img = Image.fromarray(np.uint8(255/2*(sampled_img.cpu().detach().numpy()+1)).transpose(1, 2, 0))
+    img.save(f"{i}.png")
+    
