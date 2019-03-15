@@ -26,6 +26,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import datetime
 
+from PIL import Image
+
 
 def clear_line():
     """Clear line from any characters"""
@@ -122,6 +124,15 @@ def unnormalize(img):
     #s = torch.Tensor(std).view(-1, 1, 1)
     #return img.data.cpu() * s + m
     return (img.data + 1) / 2.0
+
+
+def to_pil(img):
+    img = unnormalize(img)
+    return Image.fromarray(
+        np.uint8(
+            255*img.cpu().detach().numpy()
+        ).transpose(1, 2, 0)
+    )
 
 
 def plot_error_bars():
