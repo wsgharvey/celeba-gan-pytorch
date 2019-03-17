@@ -27,7 +27,7 @@ class Observer():
         self.zooms = zooms
         self.sizes = sizes
 
-        grids = self._make_centred_grids()
+        grids = self._make_centred_grids(cuda)
         # flatten grids since we don't need spatial information
         grids = torch.cat([grid.view(-1, 2)
                            for grid in grids],
@@ -42,12 +42,14 @@ class Observer():
         else:
             self.grid = grid
 
-    def _make_centred_grids(self):
+    def _make_centred_grids(self, cuda):
         identity = torch.Tensor([[[1., 0., 0.],
                                   [0., 1., 0.]]])
         sizes = [(1, 1, size[0], size[1]) for size in self.sizes]
         grids = [F.affine_grid(identity/zoom, size)
                  for zoom, size in zip(self.zooms, sizes)]
+        if cuda:
+            grids = grids.cuda()
         return grids
 
     def peek(self, images):
