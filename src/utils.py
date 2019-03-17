@@ -12,10 +12,10 @@ Authors:
 from __future__ import print_function
 
 import torch
-import torch.nn as nn
+from torch.nn.functional import interpolate
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
-from torch.utils.data import Dataset, DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 
 import matplotlib
 matplotlib.use('agg')
@@ -126,6 +126,19 @@ def unnormalize(img):
     return (img.data + 1) / 2.0
 
 
+def ensure_batched(images):
+    shape = images.shape
+    if len(shape) == 3:
+        C, H, W = shape
+        N = 1
+        images = images.view(N, C, H, W)
+    elif len(shape) == 4:
+        N, C, H, W = shape
+    else:
+        raise Exception("images should have either 3 or 4 dimensions")
+    return images, (N, C, H, W)
+
+
 def to_pil(img):
     img = unnormalize(img)
     return Image.fromarray(
@@ -133,6 +146,37 @@ def to_pil(img):
             255*img.cpu().detach().numpy()
         ).transpose(1, 2, 0)
     )
+
+
+def visualise_sample(true_img, sampled_img, observer):
+    """
+    Make stack of images that goes:
+                |  true_image   |   sample
+    plain       |      *        |     *
+    with_grid   |      *        |     *
+    grid1_view  |      *        |     *
+    grid2_view  |      *        |     *
+    ...         |      *        |     *
+
+    """
+    trueC, trueH, trueW = true_img.shape
+    sampled_img, (_, C, H, W) = ensure_batched(sampled_img)
+    assert (trueC, trueH, trueW) == (C, H, W)
+
+    plain_images = torch.cat([true_img, sampled_img[0]],
+                             dim=2)
+    true_with_grid = observer.visualise_grid(true_img)
+    samp_with_grid = observer.visualise_grid(sampled_img)
+    grid_images = torch.cat([true_with_grid, samp_with_grid],
+                            dim=2)
+    views = [plain_images, grid_images]
+    for true_peek, samp_peek in zip(observer.visualise_peeks(true_img),
+                                    observer.visualise_peeks(sampled_img)):
+        peek_i = torch.cat([true_peek, samp_peek],
+                           dim=2)
+        peek_i = interpolate(peek_i.unsqueeze(0), size=(H, W*2)).squeeze(0)
+        views.append(peek_i)
+    return to_pil(torch.cat(views, dim=1))
 
 
 def plot_error_bars():

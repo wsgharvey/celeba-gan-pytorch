@@ -5,6 +5,7 @@ import pyro
 import pyro.distributions as dist
 
 from dcgan import Generator
+from utils import ensure_batched
 
 
 def contains_row(tensor, row):
@@ -12,7 +13,8 @@ def contains_row(tensor, row):
 
 
 class Observer():
-    def __init__(self, zooms=[2, 4, 8], sizes=[(8, 8), (8, 8), (8, 8)], cuda=True):
+    def __init__(self, zooms=[2, 4, 8], sizes=[(8, 8), (8, 8), (8, 8)],
+                 cuda=True):
         """
         provides method to get foveal views of images
 
@@ -22,11 +24,10 @@ class Observer():
         sizes - each view is `size[0] x size[1]` pixels
         """
         self.cuda = cuda
-        transform = torch.Tensor([[[1., 0., 0.],
-                                   [0., 1., 0.]]])
-        sizes = [(1, 1, size[0], size[1]) for size in sizes]
-        grids = [F.affine_grid(transform/zoom, size)
-                 for zoom, size in zip(zooms, sizes)]
+        self.zooms = zooms
+        self.sizes = sizes
+
+        grids = self._make_centred_grids()
         # flatten grids since we don't need spatial information
         grids = torch.cat([grid.view(-1, 2)
                            for grid in grids],
@@ -41,17 +42,13 @@ class Observer():
         else:
             self.grid = grid
 
-    def ensure_batched(self, images):
-        shape = images.shape
-        if len(shape) == 3:
-            C, H, W = shape
-            N = 1
-            images = images.view(N, C, H, W)
-        elif len(shape) == 4:
-            N, C, H, W = shape
-        else:
-            raise Exception("images should have either 3 or 4 dimensions")
-        return images, (N, C, H, W)
+    def _make_centred_grids(self):
+        identity = torch.Tensor([[[1., 0., 0.],
+                                  [0., 1., 0.]]])
+        sizes = [(1, 1, size[0], size[1]) for size in self.sizes]
+        grids = [F.affine_grid(identity/zoom, size)
+                 for zoom, size in zip(self.zooms, sizes)]
+        return grids
 
     def peek(self, images):
         """
@@ -59,7 +56,7 @@ class Observer():
         observed patch. currently must be same for every
         image.
         """
-        images, (N, C, H, W) = self.ensure_batched(images)
+        images, (N, C, H, W) = ensure_batched(images)
         batch_grid = self.moved_grid.repeat(N, 1, 1, 1)
         foveal_view = F.grid_sample(images, batch_grid,
                                     padding_mode='zeros')
@@ -68,25 +65,37 @@ class Observer():
     def set_pos(self, xc, yc):
         self.xc = xc
         self.yc = yc
-        self.centre = torch.Tensor([xc, yc])
+        self.pos = torch.Tensor([xc, yc])
         if self.cuda:
-            self.centre = self.centre.cuda()
-        self.moved_grid = self.grid + self.centre
+            self.pos = self.pos.cuda()
+        self.moved_grid = self.grid + self.pos
 
     def visualise_grid(self, images):
-        images, (_, C, H, W) = self.ensure_batched(images)
-        image = images[0]
+        images, (_, C, H, W) = ensure_batched(images)
+        image = images[0].clone()
         grid = self.moved_grid.view(-1, 2)
         for x, y in grid:
             # scale coords to [0, 1]
             x = (x+1)/2
             y = (y+1)/2
             # scale coords to [0, H], [0, W]
-            x = int(x*H)
-            y = int(y*W)
-            if x >= 0 and y >= 0 and x < H and y < W:
-                image[:, x, y] = torch.Tensor([1., -1., -1.])
+            y = int(y*H)
+            x = int(x*W)
+            if y >= 0 and x >= 0 and y < H and x < W:
+                image[:, y, x] = torch.Tensor([1., -1., -1.])
         return image
+
+    def visualise_peeks(self, images):
+        """
+        generator of images representing what each
+        grid `sees`
+        """
+        images, (_, C, H, W) = ensure_batched(images)
+        image = images[0:1]
+        grids = [grid + self.pos for grid in self._make_centred_grids()]
+        for grid in grids:
+            yield F.grid_sample(image, grid,
+                                padding_mode='zeros').squeeze(dim=0)
 
 
 class FaceModel():
