@@ -121,12 +121,13 @@ class FaceModel():
         )
 
     def __call__(self, observer, true_image):
-        latents = pyro.sample(
-            "latents",
-            dist.Normal(self.latent_dim,
-                        self.latent_std)
-        ).view(2, self.latent_dim)
-        image = self.generator(latents)[0]
+        with torch.no_grad():
+            latents = pyro.sample(
+                "latents",
+                dist.Normal(self.latent_dim,
+                            self.latent_std)
+            ).view(2, self.latent_dim)
+            image = self.generator(latents)[0]
 
         if observer is not None:
             true_foveal = observer.peek(true_image)
