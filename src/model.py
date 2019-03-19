@@ -11,6 +11,7 @@ from utils import ensure_batched
 def contains_row(tensor, row):
     return torch.any(torch.all(torch.eq(row, tensor), dim=-1))
 
+num_iters = 0
 
 class Observer():
     def __init__(self, zooms=[2, 4, 8], sizes=[(8, 8), (8, 8), (8, 8)],
@@ -104,8 +105,8 @@ class FaceModel():
     def __init__(self, cuda=True):
         self.cuda = cuda
         self.latent_dim = 100
-        self.latent_mean = torch.zeros(2, self.latent_dim)
-        self.latent_std = torch.ones(2, self.latent_dim)
+        self.latent_mean = torch.zeros(1, self.latent_dim)
+        self.latent_std = torch.ones(1, self.latent_dim)
         self.obs_std = torch.tensor(1.)
         if cuda:
             self.latent_mean = self.latent_mean.cuda()
@@ -114,6 +115,7 @@ class FaceModel():
             self.generator = Generator().cuda()
         else:
             self.generator = Generator()
+        self.generator.eval()
 
         self.generator.load_state_dict(
             torch.load('checkpoints/trained_wgan/wgan-gen.pt',
@@ -121,12 +123,14 @@ class FaceModel():
         )
 
     def __call__(self, observer, true_image):
+        global num_iters
+        num_iters += 1
         latents = pyro.sample(
             "latents",
-            dist.Normal(self.latent_dim,
+            dist.Normal(self.latent_mean,
                         self.latent_std)
-        ).view(2, self.latent_dim)
-        image = self.generator(latents)[0]
+        )
+        image = self.generator(latents).squeeze(0)
 
         if observer is not None:
             true_foveal = observer.peek(true_image)
