@@ -139,3 +139,15 @@ class FaceModel():
                 obs=true_foveal.contiguous().view(-1)
             )
         return image
+
+
+# make an array of samples from the model
+if __name__ == '__main__':
+    model = FaceModel(False)
+    grid = [[model(None, None)
+             for _ in range(10)]
+            for _ in range(10)]
+    grid = torch.cat([torch.cat(row, dim=2) for row in grid],
+                     dim=1)
+    to_pil(grid).show()
+
