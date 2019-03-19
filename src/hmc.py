@@ -17,8 +17,12 @@ observer = Observer(zooms=[1, 2, 4],
 observer.set_pos(-0.5, 0)
 
 # run HMC/NUTS
-hmc_posterior = MCMC(nuts_kernel, num_samples=10, warmup_steps=0) \
+num_samples = 50
+hmc_posterior = MCMC(nuts_kernel, num_samples=num_samples, warmup_steps=num_samples) \
     .run(observer, ground_truth_image)
+
+import model
+print(model.num_iters, num_samples)
 
 # save images
 for i, trace in enumerate(hmc_posterior.exec_traces):
