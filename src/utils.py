@@ -25,8 +25,8 @@ rcParams['font.sans-serif'] = ['Arial']
 import matplotlib.pyplot as plt
 import numpy as np
 import datetime
-
 from PIL import Image
+from math import log
 
 
 def clear_line():
@@ -206,6 +206,12 @@ def plot_error_bars():
     ax.legend((rects1[0], rects2[0]), ('GAN', 'WGAN'), loc="upper right", fontsize=16)
     plt.tight_layout()
     plt.savefig('score.png', dpi=200)
+
+
+def xlogx(x):
+    if x == 0:
+        return 0
+    return x*log(x)
 
 
 class AvgMeter(object):

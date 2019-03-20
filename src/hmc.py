@@ -1,7 +1,7 @@
 import torch
 from pyro.infer.mcmc import MCMC, NUTS
 
-from model import FaceModel, Observer
+from model import FaceModel, Observer, num_iters
 from utils import visualise_sample
 
 
@@ -18,11 +18,12 @@ observer.set_pos(-0.5, 0)
 
 # run HMC/NUTS
 num_samples = 50
-hmc_posterior = MCMC(nuts_kernel, num_samples=num_samples, warmup_steps=num_samples) \
+hmc_posterior = MCMC(nuts_kernel,
+                     num_samples=num_samples,
+                     warmup_steps=num_samples) \
     .run(observer, ground_truth_image)
 
-import model
-print(model.num_iters, num_samples)
+print(num_iters, num_samples)
 
 # save images
 for i, trace in enumerate(hmc_posterior.exec_traces):

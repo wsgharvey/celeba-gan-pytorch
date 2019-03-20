@@ -11,7 +11,9 @@ from utils import ensure_batched
 def contains_row(tensor, row):
     return torch.any(torch.all(torch.eq(row, tensor), dim=-1))
 
+
 num_iters = 0
+
 
 class Observer():
     def __init__(self, zooms=[2, 4, 8], sizes=[(8, 8), (8, 8), (8, 8)],
@@ -144,9 +146,18 @@ class FaceModel():
             )
         return image
 
+    def latent_var(self, trace):
+        """
+        Some arbitrary binary latent variable. Stand-in since
+        we don't currently have disentangled representations.
+        """
+        return trace.nodes['latents']['value'][0, 0] > 0
 
-# make an array of samples from the model
+
 if __name__ == '__main__':
+    from utils import to_pil
+
+    # make an array of samples from the model
     model = FaceModel(False)
     grid = [[model(None, None)
              for _ in range(10)]
@@ -155,3 +166,20 @@ if __name__ == '__main__':
                      dim=1)
     to_pil(grid).show()
 
+    # vary a single dimension
+    dim = 0
+    model = FaceModel(False)
+    latents = torch.distributions.Normal(
+        torch.zeros(20, 100),
+        torch.ones(20, 100)
+    ).sample()
+    hi_latents = latents.clone()
+    hi_latents[:, dim] = 1
+    lo_latents = latents.clone()
+    lo_latents[:, dim] = -1
+    hi_images = model.generator(hi_latents)
+    lo_images = model.generator(lo_latents)
+    hi_row = torch.cat([im for im in hi_images], dim=2)
+    lo_row = torch.cat([im for im in lo_images], dim=2)
+    grid = torch.cat([hi_row, lo_row], dim=1)
+    to_pil(grid).show()
