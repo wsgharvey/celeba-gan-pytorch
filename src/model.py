@@ -15,7 +15,7 @@ def contains_row(tensor, row):
 num_iters = 0
 
 
-class Observer():
+class ObserveGrid():
     def __init__(self, zooms=[2, 4, 8], sizes=[(8, 8), (8, 8), (8, 8)],
                  cuda=True):
         """
@@ -29,6 +29,8 @@ class Observer():
         self.cuda = cuda
         self.zooms = zooms
         self.sizes = sizes
+        self.xc = None
+        self.yc = None
 
         grids = self._make_centred_grids()
         # flatten grids since we don't need spatial information
@@ -102,6 +104,12 @@ class Observer():
             yield F.grid_sample(image, grid,
                                 padding_mode='zeros').squeeze(dim=0)
 
+    def copy(self):
+        other = ObserveGrid(self.zooms, self.sizes, self.cuda)
+        if self.xc is not None:
+            other.set_pos(self.xc, self.yc)
+        return other
+
 
 class FaceModel():
     def __init__(self, cuda=True):
@@ -124,7 +132,7 @@ class FaceModel():
                        map_location=(None if cuda else 'cpu'))
         )
 
-    def __call__(self, observer, true_image):
+    def __call__(self, observe_grids, observations):
         global num_iters
         num_iters += 1
         latents = pyro.sample(
@@ -134,16 +142,17 @@ class FaceModel():
         )
         image = self.generator(latents).squeeze(0)
 
-        if observer is not None:
-            true_foveal = observer.peek(true_image)
-            sim_foveal = observer.peek(image)
-
-            pyro.sample(
-                "observed_patch",
-                dist.Normal(sim_foveal.contiguous().view(-1),
-                            self.obs_std),
-                obs=true_foveal.contiguous().view(-1)
-            )
+        if observe_grids is not None:
+            for i, (observe_grid, observation) in enumerate(
+                                                      zip(observe_grids,
+                                                          observations)):
+                sim_foveal = observe_grid.peek(image)
+                pyro.sample(
+                    f"observed_patch_{i}",
+                    dist.Normal(sim_foveal.contiguous().view(-1),
+                                self.obs_std),
+                    obs=observation.view(-1)
+                )
         return image
 
     def latent_var(self, trace):
