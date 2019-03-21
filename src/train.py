@@ -243,6 +243,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--critic', help='d/g update ratio (critic)', default=1, type=int)
     parser.add_argument('-s', '--seed', help='random seed for debugging', type=int)
     parser.add_argument('-gpu', '--cuda', help='use cuda', action='store_true')
+    parser.add_argument('-l', '--load', help='Restart training by loading checkpoint', default='', type=str)
     args = parser.parse_args()
 
     # GAN parameters (type and latent dimension size)
@@ -278,6 +279,9 @@ if __name__ == '__main__':
 
     if args.seed:
         torch.manual_seed(args.seed)
+
+    if args.load != '':
+        model.gan.load_model(args.load, args.cuda)
 
     # Train
     model.train(args.nb_epochs, data_loader)
