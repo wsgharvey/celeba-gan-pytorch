@@ -127,7 +127,7 @@ class DCGAN(nn.Module):
             G_optimizer.step()
 
             #  Update generator loss
-            G_loss = G_train_loss.data[0]
+            G_loss = G_train_loss.data.item()
 
         elif self.gan_type == 'lsgan':
             # Evaluate loss and backpropagate (negative since we minimize)
@@ -136,7 +136,7 @@ class DCGAN(nn.Module):
             G_optimizer.step()
 
             #  Update generator loss
-            G_loss = G_train_loss.data[0]
+            G_loss = G_train_loss.data.item()
 
         elif self.gan_type == 'wgan':
             # Evaluate loss and backpropagate (negative since we minimize)
@@ -145,7 +145,7 @@ class DCGAN(nn.Module):
             G_optimizer.step()
 
             #  Update generator loss
-            G_loss = G_train_loss.data[0]
+            G_loss = G_train_loss.data.item()
 
 
         else:
@@ -195,7 +195,7 @@ class DCGAN(nn.Module):
             raise NotImplementedError
 
         # Update discriminator loss
-        D_loss = D_train_loss.data[0]
+        D_loss = D_train_loss.data.item()
         return D_loss, fake_imgs
 
 
