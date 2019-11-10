@@ -19,16 +19,17 @@ observed = observe_grid.peek(ground_truth_image)
 
 # run HMC/NUTS
 num_samples = 50
-hmc_posterior = MCMC(nuts_kernel,
-                     num_samples=num_samples,
-                     warmup_steps=num_samples) \
-    .run([observe_grid], [observed])
+hmc = MCMC(nuts_kernel,
+           num_samples=num_samples,
+           warmup_steps=num_samples)
+hmc.run([observe_grid], [observed])
 
-print(num_iters, num_samples)
+hmc_samples = {k: v.detach().cpu().numpy()
+               for k, v in hmc.get_samples().items()}
 
 # save images
-for i, trace in enumerate(hmc_posterior.exec_traces):
-    sampled_img = trace.nodes['_RETURN']['value']
+for i, latent in enumerate(hmc._samples['latents'][0]):
+    sampled_img = model.generator(latent).squeeze(0)
     visualise_sample(
         ground_truth_image,
         sampled_img,
